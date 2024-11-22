@@ -1,15 +1,14 @@
 const mongoose = require("mongoose");
+require("dotenv").config(); 
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(
-      "mongodb+srv://brianarruk22:W3jnGEl0c6AYsqmz@cluster0.1ldfa.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-    );
+    await mongoose.connect(process.env.MONGO_URI); 
     console.log("Conectado ao MongoDB com sucesso!");
   } catch (error) {
     console.error("Erro ao conectar ao MongoDB:", error.message);
-    process.exit(1); // Finaliza a aplicação se não conectar
+    process.exit(1);
   }
 };
 
-module.exports = connectDB
+module.exports = connectDB;

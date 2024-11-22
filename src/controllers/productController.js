@@ -19,4 +19,78 @@ const createProduct = async (req, res) => {
     }
 };
 
-module.exports = { createProduct }
+const getProduct = async (req, res) => {
+    try{
+        const id = req.query.productId
+
+        const doc = await Product.findById(id).select('_id name price stock');
+        if (doc) {
+            res.status(200).json({
+                success: true,
+                product: doc
+            })
+        } else {
+            res.status(404).json({ message: "ID not found" });
+        }
+    } catch (error){
+        res.status(400).json({ success: false, message: error.message })
+    }
+}
+
+const getAllProducts = async (req, res) => {
+    try{
+        const docs = await Product.find().select('_id name price stock');
+
+        const response = {
+            count: docs.length,
+            products: docs.map(doc => {
+                return {
+                    _id: doc._id,
+                    name: doc.name,
+                    price: doc.price,
+                    stock: doc.stock
+                }
+            })
+        }
+        res.status(200).json({ success: true, response })
+       
+    } catch (error){
+        res.status(400).json({ success: false, message: error.message })
+    }
+}
+
+const updateProduct = async (req, res) => {
+    try {
+        const id = req.query.productId
+        const findId = await Product.findById(id)
+
+        if(findId) {
+            const result = await Product.findByIdAndUpdate(id, { $set: req.body }, { new: true });
+            res.status(200).json({ success: true, message: 'Id has been updated ' + result.id })
+        } else {
+            res.status(404).json({ message: 'ID not found' })
+        }
+
+    } catch (error){
+        res.status(400).json({ success: false, message: error.message })
+    }
+}
+
+const deleteProduct = async (req, res) => {
+    try {
+        const id = req.query.productId
+        const findId = await Product.findById(id)
+
+        if(findId) {
+            await Product.deleteOne({_id: id})
+            res.status(200).json({ success: true, message: 'ID has been deleted ' + id })
+        } else {
+            res.status(404).json({ message: 'ID not found' })
+        }
+        
+    } catch (error) {
+        res.status(400).json({ success: false, message: error.message })
+    }
+}
+
+module.exports = { createProduct, getProduct, getAllProducts, updateProduct, deleteProduct }
