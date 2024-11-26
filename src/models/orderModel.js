@@ -1,13 +1,15 @@
 const mongoose = require("mongoose")
 
 const orderSchema = new mongoose.Schema({
-    items: [
+    _id: mongoose.Schema.Types.ObjectId,
+    itens: [
       {
-        productId: mongoose.Schema.Types.ObjectId,
+        productId: { type: String, required: true },
         quantity: { type: Number, required: true },
+        _id: false
       },
     ],
-    total: { type: Number, required: true },
+    total: { type: Number },
     createdAt: { type: Date, default: Date.now },
   });
   
