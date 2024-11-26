@@ -23,7 +23,6 @@ const createOrder = async (req, res) => {
 
         // Verifica se já existe algum para saber se é necessario criar um novo ou não
         const existOrder = await Order.findOne()
-        console.log(itens)
         
         if (existOrder == null) {
             const order = new Order({
@@ -35,9 +34,19 @@ const createOrder = async (req, res) => {
             const newOrder = await order.save()
             res.status(201).json({ success: true, data: newOrder})
         } else {
-            existOrder.itens.push(...itens)
-            await existOrder.save()
-            res.status(200).json({ success: true, message: "Items added to existing order", data: existOrder})
+            for (const newItem of itens) {
+                const existingItem = existOrder.itens.find(
+                    (item) => item.productId.toString() === newItem.productId
+                );
+                // se o produto já existir no carrinho, invés de criar um novo adicionar no estoque
+                if (existingItem) {
+                    existingItem.quantity += newItem.quantity;
+                } else {
+                    existOrder.itens.push(newItem);
+                }
+            }
+            await existOrder.save();
+            return res.status(200).json({ success: true, message: "Items added to existing order", data: existOrder });
         }
         
     } catch (error) {
@@ -49,13 +58,13 @@ const getOrders = async (req, res) => {
     try {
         const orders = await Order.find()
 
-        if ( orders.length == 0 ) {
+        if (orders.length == 0) {
             res.status(404).json({ sucess: false, message: "Cart is empty" })
         }
 
         const response = {
             _id: orders[0]._id,
-            count: orders.length,
+            count: orders[0].itens.length,
             itens: orders[0].itens
         }
         res.status(200).json({ success: true, ...response }) 
@@ -71,7 +80,7 @@ const deleteProductFromOrder = async (req, res) => {
         
         const order = await Order.findOne();
 
-        if ( !order ) {
+        if (!order) {
             res.status(404).json({ success: false, message: "Order not found" });
         }
 
@@ -82,7 +91,7 @@ const deleteProductFromOrder = async (req, res) => {
         );
 
         // Verifica se o produto foi encontrado e removido
-        if ( order.itens.length === initialLength ) {
+        if (order.itens.length === initialLength) {
             res.status(404).json({ success: false, message: "Product not found in order" });
         }
 
@@ -111,44 +120,44 @@ const checkOrder = async (req, res) => {
     try {
         const orderId = req.query.orderId
 
-        if ( !orderId ) {
-            res.status(400).json({ success: false, message: "orderId is required"})
+        if (!orderId) {
+            return res.status(400).json({ success: false, message: "orderId is required"})
         }
 
         const order = await Order.findById(orderId).session(session)
 
-        if ( !order ) {
+        if (!order) {
             await session.abortTransaction()
             session.endSession()
-            res.status(404).json({ sucess: false, message: "Order not found" })
+            return res.status(404).json({ sucess: false, message: "Order not found" })
         }
 
-        const { itens } = order
+        const {itens} = order
 
-        if ( !itens || itens.length === 0 ) {
+        if (!itens || itens.length === 0) {
             await session.abortTransaction()
             session.endSession();
-            res.status(400).json({ success: false, message: "Order has no itens"})
+            return res.status(400).json({ success: false, message: "Order has no itens"})
         }
 
         for ( const item of itens ) {
             const product = await Product.findById(item.productId).session()
 
-            if( !product ) {
+            if(!product) {
                 await session.abortTransaction()
                 session.endSession()
-                res.status(400).json({ success: false, message: "Product not found " + item.productId })
+                return res.status(400).json({ success: false, message: "Product not found " + item.productId })
             }
             // vendo se o estoque é menor do que a quantidade da compra
-            if( product.stock < item.quantity ) {
+            if(product.stock < item.quantity) {
                 await session.abortTransaction()
                 session.endSession()
-                res.status(400).json({ success: false, message: "Insufficient stock for product: " + product.name })
+                return res.status(400).json({ success: false, message: "Insufficient stock for product: " + product.name })
             }
         }
 
         // Atualização do estoque
-        for ( const item of itens ) {                       // decrementa o estoque
+        for (const item of itens) {                       // decrementa o estoque
             await Product.findByIdAndUpdate(item.productId, { $inc: { stock: -item.quantity } }, { new: true, session })
         }
 
@@ -159,11 +168,11 @@ const checkOrder = async (req, res) => {
         await session.commitTransaction()
         session.endSession()
 
-        res.status(200).json({ success: true, message: "Order finalized successfully", data: order})
-    } catch ( error ) {
+        return res.status(200).json({ success: true, message: "Order finalized successfully", data: order})
+    } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        res.status(400).json({ success: false, message: error.message })
+        return res.status(400).json({ success: false, message: error.message })
     }
 }
 

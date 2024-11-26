@@ -4,6 +4,22 @@ const Product = require("../models/productModel")
 
 const createProduct = async (req, res) => {
     try {
+        const { name, price, stock } = req.body;
+
+        if (!name || !price || !stock) {
+            return res.status(400).json({ success: false, message: "Name, price, and stock are required" });
+        }
+
+        const existingProduct = await Product.findOne({ name });
+
+        // se o produto já existir, invés de criar um novo adicionar no estoque
+        if (existingProduct) {
+            existingProduct.stock += stock;
+            const updatedProduct = await existingProduct.save();
+
+            return res.status(200).json({ success: true, message: "Product stock updated successfully", data: updatedProduct });
+        }
+
         const product = new Product({
             _id: new mongoose.Types.ObjectId(),
             name: req.body.name,
@@ -20,15 +36,12 @@ const createProduct = async (req, res) => {
 };
 
 const getProduct = async (req, res) => {
-    try{
+    try {
         const id = req.query.productId
 
         const doc = await Product.findById(id).select('_id name price stock');
         if (doc) {
-            res.status(200).json({
-                success: true,
-                product: doc
-            })
+            res.status(200).json({ success: true, product: doc })
         } else {
             res.status(404).json({ message: "ID not found" });
         }
@@ -38,7 +51,7 @@ const getProduct = async (req, res) => {
 }
 
 const getAllProducts = async (req, res) => {
-    try{
+    try {
         const docs = await Product.find().select('_id name price stock');
 
         const response = {
@@ -66,7 +79,7 @@ const updateProduct = async (req, res) => {
 
         if(findId) {
             const result = await Product.findByIdAndUpdate(id, { $set: req.body }, { new: true });
-            res.status(200).json({ success: true, message: 'Id has been updated ' + result.id })
+            res.status(200).json({ success: true, message: 'Product has been updated ' + result.id })
         } else {
             res.status(404).json({ message: 'ID not found' })
         }
@@ -83,7 +96,7 @@ const deleteProduct = async (req, res) => {
 
         if(findId) {
             await Product.deleteOne({_id: id})
-            res.status(200).json({ success: true, message: 'ID has been deleted ' + id })
+            res.status(200).json({ success: true, message: 'Product has been deleted ' + id })
         } else {
             res.status(404).json({ message: 'ID not found' })
         }
