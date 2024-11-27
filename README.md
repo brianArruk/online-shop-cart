@@ -1,4 +1,4 @@
-# API Documentation
+# Project Documentation
 
 ## Índice
 1. [Introdução](#introdução)
