@@ -1,15 +1,15 @@
 const mongoose = require("mongoose")
 
 const Product = require("../models/productModel")
-const Order = require("../models/orderModel")
+const Cart = require("../models/cartModel")
 
-const createOrder = async (req, res) => {
+const addProductCart = async (req, res) => {
     try {
         const { itens } = req.body
         // let total = 0
 
         if (!itens || itens.length === 0) {
-            res.status(400).json({ success: false, message: "Itens are required" });
+            return res.status(400).json({ success: false, message: "Itens are required" });
         }
 
         for (const item of itens) {
@@ -17,36 +17,36 @@ const createOrder = async (req, res) => {
             // total += product.price
 
             if (!product) {
-              res.status(404).json({ success: false, message: 'Product not found ' + item.productId });
+              return res.status(404).json({ success: false, message: 'Product not found ' + item.productId });
             }
         }
 
-        // Verifica se já existe algum para saber se é necessario criar um novo ou não
-        const existOrder = await Order.findOne()
+        // Verifica se já existe algum produto no carrinho para saber se é necessario criar um novo ou não
+        const existCart = await Cart.findOne()
         
-        if (existOrder == null) {
-            const order = new Order({
+        if (existCart == null) {
+            const cart = new Cart({
                 _id: new mongoose.Types.ObjectId(),
                 itens
                 // total,
             })
 
-            const newOrder = await order.save()
-            res.status(201).json({ success: true, data: newOrder})
+            const newCart = await cart.save()
+            return res.status(201).json({ success: true, data: newCart})
         } else {
             for (const newItem of itens) {
-                const existingItem = existOrder.itens.find(
+                const existingItem = existCart.itens.find(
                     (item) => item.productId.toString() === newItem.productId
                 );
                 // se o produto já existir no carrinho, invés de criar um novo adicionar no estoque
                 if (existingItem) {
                     existingItem.quantity += newItem.quantity;
                 } else {
-                    existOrder.itens.push(newItem);
+                    existCart.itens.push(newItem);
                 }
             }
-            await existOrder.save();
-            return res.status(200).json({ success: true, message: "Items added to existing order", data: existOrder });
+            await existCart.save();
+            return res.status(200).json({ success: true, message: "Items added to existing cart", data: existCart });
         }
         
     } catch (error) {
@@ -54,18 +54,18 @@ const createOrder = async (req, res) => {
     }
 };
 
-const getOrders = async (req, res) => {
+const getProductsCart = async (req, res) => {
     try {
-        const orders = await Order.find()
+        const cart = await Cart.find()
 
-        if (orders.length == 0) {
-            res.status(404).json({ sucess: false, message: "Cart is empty" })
+        if (cart.length == 0) {
+            return res.status(404).json({ sucess: false, message: "Cart is empty" })
         }
 
         const response = {
-            _id: orders[0]._id,
-            count: orders[0].itens.length,
-            itens: orders[0].itens
+            _id: cart[0]._id,
+            count: cart[0].itens.length,
+            itens: cart[0].itens
         }
         res.status(200).json({ success: true, ...response }) 
     } catch (error) {
@@ -74,70 +74,70 @@ const getOrders = async (req, res) => {
 
 }
 
-const deleteProductFromOrder = async (req, res) => {
+const deleteProductFromCart = async (req, res) => {
     try {
         const id = req.query.productId
         
-        const order = await Order.findOne();
+        const cart = await Cart.findOne();
 
-        if (!order) {
-            res.status(404).json({ success: false, message: "Order not found" });
+        if (!cart) {
+            return res.status(404).json({ success: false, message: "Cart not found" });
         }
 
         // Filtra os itens, removendo o produto com o productId especificado
-        const initialLength = order.itens.length;
-        order.itens = order.itens.filter(
+        const initialLength = cart.itens.length;
+        cart.itens = cart.itens.filter(
             (item) => item.productId.toString() !== id
         );
 
         // Verifica se o produto foi encontrado e removido
-        if (order.itens.length === initialLength) {
-            res.status(404).json({ success: false, message: "Product not found in order" });
+        if (cart.itens.length === initialLength) {
+            return res.status(404).json({ success: false, message: "Product not found in cart" });
         }
 
         // Salva a ordem atualizada
-        await order.save();
+        await cart.save();
 
-        res.status(200).json({ success: true, message: "Product removed from order", data: order,
+        res.status(200).json({ success: true, message: "Product removed from cart", data: cart,
         });
     } catch (error) {
         return res.status(400).json({ success: false, message: error.message });
     }
 };
 
-const deleteAllOrders = async (req, res) => {
+const deleteAllProductsCart = async (req, res) => {
     try {
-        await Order.deleteMany()
-        res.status(200).json({ success: true, message: 'All orders have been deleted'})
+        await Cart.deleteMany()
+        res.status(200).json({ success: true, message: 'All products have been removed from the cart'})
     } catch ( error ) {
         res.status(400).json({ success: false, message: error.message })
     }
 }
 
-const checkOrder = async (req, res) => {
+const purchaseCheck = async (req, res) => {
     const session = await mongoose.startSession()
     session.startTransaction()
     try {
-        const orderId = req.query.orderId
+        const cartId = req.query.cartId
 
-        if (!orderId) {
-            return res.status(400).json({ success: false, message: "orderId is required"})
+        if (!cartId) {
+            return res.status(400).json({ success: false, message: "cartId is required"})
         }
 
-        const order = await Order.findById(orderId).session(session)
+        const cart = await Cart.findById(cartId).session(session)
 
-        if (!order) {
+        if (!cart) {
             await session.abortTransaction()
             session.endSession()
-            return res.status(404).json({ sucess: false, message: "Order not found" })
+            return res.status(404).json({ sucess: false, message: "Cart not found" })
         }
 
-        const {itens} = order
+        const {itens} = cart
 
         if (!itens || itens.length === 0) {
             await session.abortTransaction()
             session.endSession();
-            return res.status(400).json({ success: false, message: "Order has no itens"})
+            return res.status(400).json({ success: false, message: "Cart has no itens"})
         }
 
         for ( const item of itens ) {
@@ -162,18 +162,18 @@ const checkOrder = async (req, res) => {
         }
 
         // esvazia o "carrinho" depois da efetuação
-        await Order.deleteMany().session(session);
+        await Cart.deleteMany().session(session);
 
 
         await session.commitTransaction()
         session.endSession()
 
-        return res.status(200).json({ success: true, message: "Order finalized successfully", data: order})
+        res.status(200).json({ success: true, message: "Purchase completed successfully" })
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
-        return res.status(400).json({ success: false, message: error.message })
+        res.status(400).json({ success: false, message: error.message })
     }
 }
 
-module.exports = { createOrder, getOrders, deleteProductFromOrder, deleteAllOrders, checkOrder }
+module.exports = { addProductCart, getProductsCart, deleteProductFromCart, deleteAllProductsCart, purchaseCheck }

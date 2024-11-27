@@ -41,9 +41,9 @@ const getProduct = async (req, res) => {
 
         const doc = await Product.findById(id).select('_id name price stock');
         if (doc) {
-            res.status(200).json({ success: true, product: doc })
+            return res.status(200).json({ success: true, product: doc })
         } else {
-            res.status(404).json({ message: "ID not found" });
+            return res.status(404).json({ message: "ID not found" });
         }
     } catch (error){
         res.status(400).json({ success: false, message: error.message })
@@ -79,9 +79,9 @@ const updateProduct = async (req, res) => {
 
         if(findId) {
             const result = await Product.findByIdAndUpdate(id, { $set: req.body }, { new: true });
-            res.status(200).json({ success: true, message: 'Product has been updated ' + result.id })
+            return res.status(200).json({ success: true, message: 'Product has been updated ' + result.id })
         } else {
-            res.status(404).json({ message: 'ID not found' })
+            return res.status(404).json({ message: 'ID not found' })
         }
 
     } catch (error){
@@ -96,9 +96,9 @@ const deleteProduct = async (req, res) => {
 
         if(findId) {
             await Product.deleteOne({_id: id})
-            res.status(200).json({ success: true, message: 'Product has been deleted ' + id })
+            return res.status(200).json({ success: true, message: 'Product has been deleted ' + id })
         } else {
-            res.status(404).json({ message: 'ID not found' })
+            return res.status(404).json({ message: 'ID not found' })
         }
         
     } catch (error) {
