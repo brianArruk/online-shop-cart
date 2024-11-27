@@ -6,7 +6,6 @@ const Cart = require("../models/cartModel")
 const addProductCart = async (req, res) => {
     try {
         const { itens } = req.body
-        // let total = 0
 
         if (!itens || itens.length === 0) {
             return res.status(400).json({ success: false, message: "Itens are required" });
@@ -14,7 +13,6 @@ const addProductCart = async (req, res) => {
 
         for (const item of itens) {
             const product = await Product.findById(item.productId);
-            // total += product.price
 
             if (!product) {
               return res.status(404).json({ success: false, message: 'Product not found ' + item.productId });
