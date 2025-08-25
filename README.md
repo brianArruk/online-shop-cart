@@ -413,4 +413,4 @@ Content-Type: application/json
 
 ## Notas Finais
 
-Este projeto foi um desafio técnico para uma entrevista de emprego.
+Projeto de estudo
